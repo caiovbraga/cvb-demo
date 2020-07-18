@@ -1,0 +1,23 @@
+http:
+  routers:
+    apache-rtr:
+      rule: "Host(`apache.local`)"
+      service: apache-service
+      entryPoints:
+      - web
+    java-api-rtr:
+      rule: "Host(`java-api.local`)"
+      service: java-api-service
+      entryPoints:
+        - web
+
+  services:
+    apache-service:
+      loadBalancer:
+        servers:
+        - url: http://apache-server
+
+    java-api-service:
+      loadBalancer:
+        servers:
+        - url: http://java-api:8443

@@ -1,0 +1,123 @@
+version: "3"
+
+volumes:
+  mongodb-data-vol:
+    external: true
+  mongodb-configdb-vol:
+      external: true
+
+networks: 
+  web:
+    external: true
+  backend:
+    external: true
+
+services:
+  mongodb-server:
+    image: mongo:latest
+    container_name: mongodb
+    #ports:
+    #  - 27017:27017
+    environment: 
+      MONGO_INITDB_ROOT_USERNAME: mongoadmin
+      MONGO_INITDB_ROOT_PASSWORD: secret
+    volumes: 
+      - mongodb-data-vol:/data/db
+      - mongodb-configdb-vol:/data/configdb
+      - ./certs:/etc/ssl/certs-mongo
+    #command: --sslMode requireTLS --tlsCertificateKeyFile /etc/ssl/certs-mongo/mongodb.pem 
+    command: --sslMode preferTLS --tlsCertificateKeyFile /etc/ssl/certs-mongo/mongodb.pem 
+    networks: 
+      - backend
+  
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongoexpress
+    ports: 
+      - 8081:8081
+    environment: 
+      ME_CONFIG_MONGODB_SERVER: mongodb-server
+      ME_CONFIG_MONGODB_PORT: 27017
+      ME_CONFIG_MONGODB_ADMINUSERNAME: mongoadmin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: secret
+      #ME_CONFIG_SITE_SSL_ENABLED: 1
+      #ME_CONFIG_SITE_SSL_CRT_PATH: /etc/ssl/certs-mongo/mongodb-cert.crt
+      #ME_CONFIG_SITE_SSL_KEY_PATH: /etc/ssl/certs-mongo/mongodb-cert.key
+    volumes: 
+      - ./certs:/etc/ssl/certs-mongo
+    networks: 
+      - backend
+    depends_on: 
+      - mongodb-server
+  
+  java-api:
+    image: api-docker-image
+    #container_name: java_api
+    #ports:
+    #  - 9090:8080
+    volumes: 
+      - ./certs:/etc/ssl/certs-mongo
+    networks: 
+      - backend
+    #labels: 
+    #  - traefik.enable=true
+    #  - traefik.http.routers.java-api-rtr.rule=Host(`java-api.local`)
+    #  - traefik.http.routers.java-api-rtr.entrypoints=web
+    #  - traefik.http.routers.java-api-rtr.service=java-api-service
+    #  - traefik.http.services.java-api-service.loadbalancer.server.port=8443
+    depends_on:
+      - mongodb-server
+
+  apache-server:
+    image: php:7.4-apache
+    volumes:
+      - .apache/vhosts.conf:/etc/apache2/sites-enabled/000-default.conf
+      - .apache/index.php:/var/www/html/index.php
+      - .apache/post.php:/var/www/html/post.php
+    networks: 
+      - web
+      - backend
+    depends_on: 
+      - mongodb-server
+      - java-api
+
+  traefik:
+    image: traefik:v2.2
+    restart: unless-stopped
+    container_name: traefik
+    ports:
+      - 80:80
+      - 443:443  
+    command:
+      - --api.insecure=true 
+      - --api.dashboard=true
+      - --api.debug=true
+      - --log=true  
+      - --log.level=DEBUG 
+      - --accessLog=true
+      - --accessLog.filePath=/traefik.log
+      - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
+      - --accessLog.filters.statusCodes=400-499  
+      - --providers.docker=true 
+      - --providers.docker.exposedbydefault=false # only expose enabled ones
+      - --providers.file.directory=/configuration
+      - --providers.file.watch=true  
+      - --providers.file.filename=/dynamic.yaml # Referring to a dynamic configuration file
+      - --providers.docker.network=web # Operate on the docker network named web
+      - --entrypoints.web.address=:80 # <== Defining an entrypoint for port :80 named web
+        #- --entrypoints.web.http.redirections.entrypoint.to=web-secure
+        #- --entrypoints.web.http.redirections.entrypoint.scheme=https  
+      - --entrypoints.web-secure.address=:443 # <== Defining an entrypoint for https on port :443 named web-secured
+    volumes:
+      - ./.traefik/traefik.log:/traefik.log  
+      - ./.traefik/configuration/:/configuration
+      - /var/run/docker.sock:/var/run/docker.sock # <== Volume for docker admin  
+    networks:
+      - web 
+      - backend
+    labels:
+    # Labels define the behavior and rules of the traefik proxy for this container ####
+      - traefik.enable=true   # <== Enable traefik on itself to view dashboard and assign subdomain to view it
+      - traefik.http.routers.traefik-rtr.rule=Host(`traefik.local`)   # <== Setting the domain for the dashboard
+      - traefik.http.routers.traefik-rtr.entrypoints=web # Port 80
+      - traefik.http.routers.traefik-rtr.service=api@internal
