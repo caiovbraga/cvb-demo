@@ -1,9 +1,8 @@
 # Demo
 
-MongoDB
-
-Springboot
-
-Apache + PHP
-
-Traefik
+* Docker
+* MongoDB
+* Java springboot
+* Apache + PHP
+* Traefik
+* Jenkins

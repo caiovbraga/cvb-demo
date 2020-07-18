@@ -5,7 +5,7 @@ pipeline {
   }
   environment {
             registryUrl = "https://docker.pkg.github.com"
-            registry = "caiovbraga/cvb-bank/"
+            registry = "caiovbraga/cvb-demo/"
             app = "java-api"
             registryCredentials = 'github-token'
             appImage = ''
@@ -17,7 +17,7 @@ pipeline {
         stage ('Build Image') {
             steps {
                 script {
-                      appImage = docker.build("${registry}${grgapp}")
+                      appImage = docker.build("${registry}${app}")
                 }
             }
         }
