@@ -67,8 +67,8 @@ services:
       - .apache/vhosts.conf:/etc/apache2/sites-enabled/000-default.conf
       - .apache/index.php:/var/www/html/index.php
       - .apache/post.php:/var/www/html/post.php
-      - ./certs/apache-cert.pem:/etc/ssl/certs/apache-cert.pem
-      - ./certs/apache-key.pem:/etc/ssl/private/apache-key.pem
+      - ./certs/apache-server.crt:/etc/ssl/certs/apache-server.crt
+      - ./certs/apache-server.key:/etc/ssl/private/apache-server.key
     networks: 
       - web
       - backend

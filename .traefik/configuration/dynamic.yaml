@@ -1,9 +1,9 @@
 tls:
   certificates:
-    - certFile: /etc/ssl/traefik-cert.pem
-      keyFile: /etc/ssl/traefik-key.pem
-    - certFile: /etc/ssl/apache-cert.pem
-      keyFile: /etc/ssl/apache-key.pem
+    - certFile: /etc/ssl/traefik-server.crt
+      keyFile: /etc/ssl/traefik-server.key
+    - certFile: /etc/ssl/apache-server.crt
+      keyFile: /etc/ssl/apache-server.key
   
 
 http:
@@ -13,14 +13,6 @@ http:
       service: apache-service
       entryPoints:
       - web
-    
-    #apache-secure-rtr:
-    #  rule: "Host(`apache.local`) || Host(`apache-server`)"
-    #  service: apache-secure-service
-    #  entryPoints:
-    #  - web-secure
-    #  tls:
-    #    passthrough: true
     
     java-api-rtr:
       rule: "Host(`java-api.local`)"
@@ -54,11 +46,6 @@ http:
         servers:
         - url: http://apache-server
     
-    #apache-secure-service:
-    #  loadBalancer:
-    #    servers:
-    #    - url: https://apache-server
-
     java-api-service:
       loadBalancer:
         servers:
@@ -77,7 +64,7 @@ http:
 tcp:        
   routers:
     apache-secure-rtr:
-      rule: "HostSNI(`apache.local`) || HostSNI(`apache-server`)"
+      rule: "HostSNI(`apache-server`)"
       service: apache-secure-service
       entryPoints:
       - web-secure
@@ -91,6 +78,14 @@ tcp:
         - web-secure
       tls:
         passthrough: true
+    
+    # mongo-express-secure-rtr:
+    #   rule: "HostSNI(`mongodb-server`)"
+    #   service: mongo-express-secure-service
+    #   entryPoints:
+    #     - web-secure
+    #   tls:
+    #     passthrough: true
    
   services: 
     apache-secure-service:
@@ -102,3 +97,8 @@ tcp:
       loadBalancer:
         servers:
         - address: java-api:8443
+    
+    # mongo-express-secure-service:
+    #   loadBalancer:
+    #     servers:
+    #     - address: mongo-express:8081
