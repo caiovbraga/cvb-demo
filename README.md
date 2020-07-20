@@ -1,8 +1,8 @@
 # Demo
 
-This demo is a simple example of microservices architecture using:
+This is a simple example of microservices architecture using:
 
-* Docker
+* Docker / Docker Compose
 * MongoDB
 * Java Springboot
 * Apache + PHP
