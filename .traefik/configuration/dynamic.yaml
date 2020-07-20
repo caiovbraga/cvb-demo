@@ -1,3 +1,11 @@
+tls:
+  certificates:
+    - certFile: /etc/ssl/traefik-cert.pem
+      keyFile: /etc/ssl/traefik-key.pem
+    - certFile: /etc/ssl/apache-cert.pem
+      keyFile: /etc/ssl/apache-key.pem
+  
+
 http:
   routers:
     apache-rtr:
@@ -5,19 +13,92 @@ http:
       service: apache-service
       entryPoints:
       - web
+    
+    #apache-secure-rtr:
+    #  rule: "Host(`apache.local`) || Host(`apache-server`)"
+    #  service: apache-secure-service
+    #  entryPoints:
+    #  - web-secure
+    #  tls:
+    #    passthrough: true
+    
     java-api-rtr:
       rule: "Host(`java-api.local`)"
       service: java-api-service
       entryPoints:
         - web
+    
+    # java-api-secure-rtr:
+    #   rule: "Host(`java-api`)"
+    #   service: java-api-secure-service
+    #   entryPoints:
+    #     - web-secure
+    #   tls: {}
+    
+    nodejs-rtr:
+      rule: "Host(`nodejs.local`)"
+      service: nodejs-service
+      entryPoints:
+        - web
+
+    traefik-secure-rtr:
+      rule: "Host(`traefik.local`)"
+      service: api@internal
+      entryPoints:
+        - web-secure
+      tls: {}
 
   services:
     apache-service:
       loadBalancer:
         servers:
         - url: http://apache-server
+    
+    #apache-secure-service:
+    #  loadBalancer:
+    #    servers:
+    #    - url: https://apache-server
 
     java-api-service:
       loadBalancer:
         servers:
         - url: http://java-api:8443
+    
+    # java-api-secure-service:
+    #   loadBalancer:
+    #     servers:
+    #     - url: https://java-api:8443
+
+    nodejs-service:
+      loadBalancer:
+        servers:
+        - url: http://node-app:3000
+
+tcp:        
+  routers:
+    apache-secure-rtr:
+      rule: "HostSNI(`apache.local`) || HostSNI(`apache-server`)"
+      service: apache-secure-service
+      entryPoints:
+      - web-secure
+      tls:
+        passthrough: true
+    
+    java-api-secure-rtr:
+      rule: "HostSNI(`java-api`)"
+      service: java-api-secure-service
+      entryPoints:
+        - web-secure
+      tls:
+        passthrough: true
+   
+  services: 
+    apache-secure-service:
+      loadBalancer:
+        servers:
+        - address: apache-server:443
+
+    java-api-secure-service:
+      loadBalancer:
+        servers:
+        - address: java-api:8443
