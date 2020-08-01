@@ -1,0 +1,43 @@
+---
+  - name: Create User
+    hosts: ["digitalocean"]
+    gather_facts: yes
+    vars:
+      ansible_user: root
+      ansible_python_interpreter: /usr/bin/python3
+      user: cvbraga
+  
+    tasks:
+      - debug: var=user
+  
+      - name: Add the user with a bash shell, appending the group 'sudo' and 'docker'
+        user:
+          name: "{{ user }}"
+          shell: /bin/bash
+          groups: "{{ item }}"
+          append: yes 
+        loop:
+          - sudo
+          #- docker
+  
+      - name: Create a 2048-bit SSH key
+        user:
+          name: "{{ user }}"
+          generate_ssh_key: yes
+          ssh_key_bits: 2048
+          ssh_key_file: .ssh/{{ user }}.key
+      
+      - name: Fetch SSH key
+        fetch:
+          src: "/home/{{ user }}/.ssh/{{ item }}"
+          dest: fetched/
+          flat: true
+        loop:
+          - "{{ user }}.key"
+          - "{{ user }}.key.pub"
+  
+      - name: Set authorized key taken from file
+        authorized_key:
+          user: "{{ user }}"
+          state: present
+          key: "{{ lookup('file', 'fetched/' + '{{ user }}.key.pub') }}"

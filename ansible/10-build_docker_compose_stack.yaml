@@ -1,0 +1,42 @@
+---
+- name: Build Docker Compose stack
+  hosts: ["digitalocean"]
+  gather_facts: true
+  become: true
+  vars:
+    stack_name: microservices-demo
+    stack_dir: /srv/microservices_demo
+    docker_group: docker
+    copy_to_remote_host: ["certs", ".apache", ".java-api", ".nodejs", ".traefik", "docker-compose.yml"]
+    docker_image_name:
+      - { dir: ".apache", name: "apache-php-app" }
+      - { dir: ".java-api", name: "java-api" }
+      - { dir: ".nodejs", name: "node-app" }
+
+  tasks:
+    - debug: var=stack_dir
+
+    - name: Copy to remote host
+      copy:
+        src: "../docker-compose.yml"
+        dest: "{{ stack_dir }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ docker_group }}"
+        #mode: '0644'
+
+    - name: Build images
+      docker_image:
+        build:
+          path: "{{ stack_dir }}/{{ item.dir}}"
+          pull: yes
+        name: "{{ item.name }}"
+        source: build
+      with_items: "{{ docker_image_name }}"
+    
+    - name: Create and start services
+      docker_compose:
+        project_name: microservices-demo
+        project_src: "{{ stack_dir }}"
+    #  register: output
+    
+    #- debug: var=output

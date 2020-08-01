@@ -15,7 +15,7 @@ networks:
 services:
   mongodb-server:
     image: mongo:latest
-    container_name: mongodb
+    #container_name: mongodb
     #ports:
     #  - 27017:27017
     environment: 
@@ -25,41 +25,80 @@ services:
       - mongodb-data-vol:/data/db
       - mongodb-configdb-vol:/data/configdb
       - ./certs:/etc/ssl/certs-mongo
-    #command: --sslMode requireTLS --tlsCertificateKeyFile /etc/ssl/certs-mongo/mongodb.pem 
-    command: --sslMode preferTLS --tlsCertificateKeyFile /etc/ssl/certs-mongo/mongodb.pem #--tlsAllowConnectionsWithoutCertificates 
+    command: --tlsMode requireTLS --tlsCertificateKeyFile /etc/ssl/certs-mongo/mongodb.pem 
+    #command: --tlsMode preferTLS --tlsCertificateKeyFile /etc/ssl/certs-mongo/mongodb.pem #--tlsAllowConnectionsWithoutCertificates 
     networks: 
       - backend
   
   mongo-express:
     image: mongo-express:latest
-    container_name: mongoexpress
-    ports: 
-      - 8081:8081
+    #container_name: mongoexpress
+    #ports: 
+    #  - 8081:8081
     environment: 
       ME_CONFIG_MONGODB_SERVER: mongodb-server
       ME_CONFIG_MONGODB_PORT: 27017
       ME_CONFIG_MONGODB_ADMINUSERNAME: mongoadmin
       ME_CONFIG_MONGODB_ADMINPASSWORD: secret
-      #ME_CONFIG_SITE_SSL_ENABLED: 1
-      #ME_CONFIG_SITE_SSL_CRT_PATH: /etc/ssl/certs-mongo/mongodb-cert.crt
-      #ME_CONFIG_SITE_SSL_KEY_PATH: /etc/ssl/certs-mongo/mongodb-cert.key
+      #ME_CONFIG_MONGODB_URL: mongodb://mongoadmin:secret@mongodb-server:27017/Bank?ssl=true
+      ME_CONFIG_MONGODB_CA_FILE: /etc/ssl/certs-mongo/mongodb.pem
+      ME_CONFIG_MONGODB_SSLVALIDATE: 'false'
+      ME_CONFIG_MONGODB_SSL: 1
+      #ME_CONFIG_SITE_SSL_ENABLED: 'true'
+      #ME_CONFIG_SITE_SSL_CRT_PATH: /etc/ssl/certs-mongo/cvbtechnology.com.crt
+      #ME_CONFIG_SITE_SSL_KEY_PATH: /etc/ssl/certs-mongo/cvbtechnology.com.key
     volumes: 
       - ./certs:/etc/ssl/certs-mongo
+      - ./.mongo-express/config.js:/node_modules/mongo-express/config.js
     networks: 
+      - web
       - backend
     depends_on: 
       - mongodb-server
-  
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.mongoexpress-rtr.rule=Host(`mongo.cvbtechnology.com`)
+      - traefik.http.routers.mongoexpress-rtr.entrypoints=web
+      - traefik.http.routers.mongoexpress-rtr.service=mongoexpress-svc
+      - traefik.http.routers.mongoexpress-rtr.middlewares=redirect-secure-mongo
+      - traefik.http.middlewares.redirect-secure-mongo.redirectscheme.scheme=https
+      - traefik.http.middlewares.redirect-secure-mongo.redirectscheme.permanent=true
+      - traefik.http.middlewares.redirect-secure-mongo.redirectscheme.port=443
+      - traefik.http.services.mongoexpress-svc.loadBalancer.server.port=8081
+      - traefik.http.routers.mongoexpress-secure-rtr.rule=Host(`mongo.cvbtechnology.com`)
+      - traefik.http.routers.mongoexpress-secure-rtr.entrypoints=web-secure
+      - traefik.http.routers.mongoexpress-secure-rtr.service=mongoexpress-secure-svc
+      - traefik.http.services.mongoexpress-secure-svc.loadBalancer.server.port=8081     
+      - traefik.http.routers.mongoexpress-secure-rtr.middlewares=auth
+      - traefik.http.middlewares.auth.basicauth.users=cvbraga:$$apr1$$xrIA9yo/$$qJhwEGr3chgRTjqQpKuRQ0 # Welcome2019
+      - traefik.http.routers.mongoexpress-secure-rtr.tls=true
+
   java-api:
-    image: api-docker-image
-    #ports:
-    #  - 9090:8080
+    image: java-api
     volumes: 
       - ./certs:/etc/ssl/certs-mongo
     networks: 
+      - web
       - backend
     depends_on:
       - mongodb-server
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.java-api-rtr.rule=Host(`java-api.cvbtechnology.com`)
+      - traefik.http.routers.java-api-rtr.entrypoints=web
+      - traefik.http.routers.java-api-rtr.service=java-api-svc
+      - traefik.http.services.java-api-svc.loadBalancer.server.port=8443
+      - traefik.http.routers.java-api-rtr.middlewares=redirect-secure-java
+      - traefik.http.middlewares.redirect-secure-java.redirectscheme.scheme=https
+      - traefik.http.middlewares.redirect-secure-java.redirectscheme.permanent=true
+      - traefik.http.middlewares.redirect-secure-java.redirectscheme.port=443
+      - traefik.http.routers.java-api-secure-rtr.rule=Host(`java-api.cvbtechnology.com`)
+      - traefik.http.routers.java-api-secure-rtr.entrypoints=web-secure
+      - traefik.http.routers.java-api-secure-rtr.service=java-api-secure-svc
+      - traefik.http.services.java-api-secure-svc.loadBalancer.server.port=8443
+      - traefik.http.routers.java-api-secure-rtr.middlewares=auth
+      - traefik.http.middlewares.auth.basicauth.users=cvbraga:$$apr1$$xrIA9yo/$$qJhwEGr3chgRTjqQpKuRQ0 # Welcome2019
+      - traefik.http.routers.java-api-secure-rtr.tls=true
 
   apache-server:
     image: apache-php-app:latest
@@ -69,14 +108,33 @@ services:
       - .apache/post.php:/var/www/html/post.php
       - ./certs/apache-server.crt:/etc/ssl/certs/apache-server.crt
       - ./certs/apache-server.key:/etc/ssl/private/apache-server.key
+      - ./certs/cvbtechnology.com.crt:/etc/ssl/certs/cvbtechnology.com.crt
+      - ./certs/cvbtechnology.com.pem:/etc/ssl/certs/cvbtechnology.com.pem
+      - ./certs/cvbtechnology.com.key:/etc/ssl/private/cvbtechnology.com.key
     networks: 
       - web
-      - backend
     extra_hosts:
       - "apache-server:127.0.1.1"
     depends_on: 
       - mongodb-server
       - java-api
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.apache-rtr.rule=Host(`apache.cvbtechnology.com`)
+      - traefik.http.routers.apache-rtr.entrypoints=web
+      - traefik.http.routers.apache-rtr.service=apache-svc
+      - traefik.http.routers.apache-rtr.middlewares=redirect-secure-apache
+      - traefik.http.middlewares.redirect-secure-apache.redirectscheme.scheme=https
+      - traefik.http.middlewares.redirect-secure-apache.redirectscheme.permanent=true
+      - traefik.http.middlewares.redirect-secure-apache.redirectscheme.port=443
+      - traefik.http.services.apache-svc.loadBalancer.server.port=80
+      - traefik.http.routers.apache-secure-rtr.rule=Host(`apache.cvbtechnology.com`)
+      - traefik.http.routers.apache-secure-rtr.entrypoints=web-secure
+      - traefik.http.routers.apache-secure-rtr.service=apache-secure-svc
+      - traefik.http.services.apache-secure-svc.loadBalancer.server.port=443
+      - traefik.http.routers.apache-secure-rtr.tls=true
+      - traefik.http.routers.apache-secure-rtr.middlewares=auth
+      - traefik.http.middlewares.auth.basicauth.users=cvbraga:$$apr1$$xrIA9yo/$$qJhwEGr3chgRTjqQpKuRQ0 # Welcome2019
   
   node-app:
     image: node-app:latest
@@ -86,50 +144,60 @@ services:
       - ./certs/mongodb-cert.crt:/etc/ssl/mongodb-cert.crt
       - ./certs/mongodb.pem:/etc/ssl/mongodb.pem
     networks: 
+      - web
       - backend
     depends_on: 
       - mongodb-server
-
-  traefik:
-    image: traefik:v2.2
-    restart: unless-stopped
-    container_name: traefik
-    ports:
-      - 80:80
-      - 443:443  
-    command:
-      - --api.insecure=true 
-      - --api.dashboard=true
-      - --api.debug=true
-      - --log=true  
-      - --log.level=DEBUG 
-      - --accessLog=true
-      - --accessLog.filePath=/traefik.log
-      - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
-      - --accessLog.filters.statusCodes=400-499  
-      - --providers.docker=true 
-      - --providers.docker.exposedbydefault=false # only expose enabled ones
-      - --providers.file.directory=/configuration
-      - --providers.file.watch=true  
-      - --providers.file.filename=/dynamic.yaml # Referring to a dynamic configuration file
-      - --providers.docker.network=web # Operate on the docker network named web
-      - --entrypoints.web.address=:80 # <== Defining an entrypoint for port :80 named web
-      #- --entrypoints.web.http.redirections.entrypoint.to=web-secure
-      #- --entrypoints.web.http.redirections.entrypoint.scheme=https  
-      - --entrypoints.web-secure.address=:443
-      #- --entrypoints.web-secure.http.tls.domains[0].main=apache-server
-    volumes:
-      - ./.traefik/traefik.log:/traefik.log  
-      - ./.traefik/configuration/:/configuration
-      - ./certs/:/etc/ssl/
-      - /var/run/docker.sock:/var/run/docker.sock # <== Volume for docker admin  
-    networks:
-      - web 
-      - backend
     labels:
-    # Labels define the behavior and rules of the traefik proxy for this container ####
-      - traefik.enable=true   # <== Enable traefik on itself to view dashboard and assign subdomain to view it
-      - traefik.http.routers.traefik-rtr.rule=Host(`traefik.local`)   # <== Setting the domain for the dashboard
-      - traefik.http.routers.traefik-rtr.entrypoints=web # Port 80
-      - traefik.http.routers.traefik-rtr.service=api@internal
-      - traefik.http.routers.traefik-secure-rtr.tls=true
+      - traefik.enable=true
+      - traefik.http.routers.nodejs-rtr.rule=Host(`nodejs.cvbtechnology.com`)
+      - traefik.http.routers.nodejs-rtr.entrypoints=web
+      - traefik.http.routers.nodejs-rtr.service=nodejs-svc
+      - traefik.http.services.nodejs-svc.loadBalancer.server.port=3000
+      - traefik.http.routers.nodejs-rtr.middlewares=auth
+      - traefik.http.middlewares.auth.basicauth.users=cvbraga:$$apr1$$xrIA9yo/$$qJhwEGr3chgRTjqQpKuRQ0 # Welcome2019
+    
+
+  # traefik:
+  #   image: traefik:v2.2
+  #   restart: unless-stopped
+  #   #container_name: traefik
+  #   #ports:
+  #   #  - 80:80
+  #   #  - 443:443  
+  #   command:
+  #     - --api.insecure=true 
+  #     - --api.dashboard=true
+  #     - --api.debug=true
+  #     - --log=true  
+  #     - --log.level=DEBUG 
+  #     - --accessLog=true
+  #     - --accessLog.filePath=/traefik.log
+  #     - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
+  #     - --accessLog.filters.statusCodes=400-499  
+  #     - --providers.docker=true 
+  #     - --providers.docker.exposedbydefault=false # only expose enabled ones
+  #     - --providers.file.directory=/configuration
+  #     - --providers.file.watch=true  
+  #     - --providers.file.filename=/dynamic.yaml # Referring to a dynamic configuration file
+  #     - --providers.docker.network=web # Operate on the docker network named web
+  #     - --entrypoints.web.address=:80 # <== Defining an entrypoint for port :80 named web
+  #     #- --entrypoints.web.http.redirections.entrypoint.to=web-secure
+  #     #- --entrypoints.web.http.redirections.entrypoint.scheme=https  
+  #     - --entrypoints.web-secure.address=:443
+  #     #- --entrypoints.web-secure.http.tls.domains[0].main=apache-server
+  #   volumes:
+  #     - ./.traefik/traefik.log:/traefik.log  
+  #     - ./.traefik/configuration/:/configuration
+  #     - ./certs/:/etc/ssl/
+  #     - /var/run/docker.sock:/var/run/docker.sock # <== Volume for docker admin  
+  #   networks:
+  #     - web 
+  #     - backend
+  #   labels:
+  #   # Labels define the behavior and rules of the traefik proxy for this container ####
+  #     - traefik.enable=true   # <== Enable traefik on itself to view dashboard and assign subdomain to view it
+  #     - traefik.http.routers.traefik-rtr.rule=Host(`traefik.local`)   # <== Setting the domain for the dashboard
+  #     - traefik.http.routers.traefik-rtr.entrypoints=web # Port 80
+  #     - traefik.http.routers.traefik-rtr.service=api@internal
+  #     - traefik.http.routers.traefik-secure-rtr.tls=true

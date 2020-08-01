@@ -1,8 +1,8 @@
-# Demo
+# Microservices Demo
 
-This is a simple example of microservices architecture using:
+The purpose of this demo is to show a simple example of microservices architecture using:
 
-* Docker / Docker Compose
+* Docker
 * MongoDB
 * Java Springboot
 * Apache + PHP
@@ -10,4 +10,4 @@ This is a simple example of microservices architecture using:
 * Traefik
 
 
-![diagram](https://www.cvbtechnology.com/storage/app/media/diagram.png)
+![diagram](https://cvbtechnology.com/storage/app/media/microservices_demo.png)

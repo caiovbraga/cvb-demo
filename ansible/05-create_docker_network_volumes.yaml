@@ -1,0 +1,33 @@
+---
+- name: Create Docker Network and Volumes
+  hosts: ["digitalocean"]
+  gather_facts: no
+  #become: true
+  vars:
+    docker_network: [ { idx: 0, name: "web" }, { idx: 1, name: "backend" } ]
+    docker_volumes: [ { idx: 0, name: "mongodb-data-vol" }, { idx: 1, name: "mongodb-configdb-vol" } ]
+
+  tasks:
+    # - name: Get network info
+    #   docker_network_info:
+    #     name: "{{ item.name }}"
+    #   with_items: "{{ docker_network }}"
+    #   register: result
+    
+    # - name: Print information about network
+    #   debug:
+    #     var: result.results[ item.idx ].exists
+    #   with_items: "{{ docker_network }}"
+    #   when: result.results[ item.idx ].exists
+
+    - name: Create networks
+      docker_network:
+        name: "{{ item.name }}"
+        state: present
+      with_items: "{{ docker_network }}"
+
+    - name: Create volumes
+      docker_volume:
+        name: "{{ item.name }}"
+        state: present
+      with_items: "{{ docker_volumes }}"

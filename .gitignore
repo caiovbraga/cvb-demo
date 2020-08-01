@@ -1,3 +1,7 @@
-/target
+/.java-api/target
+/.traefik
 /certs
-/.traefik/traefik.log
+/ansible/inventory
+/ansible/fetched
+/Jenkinsfile
+/microservices-demo.odg
