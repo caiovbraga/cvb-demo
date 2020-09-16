@@ -1,0 +1,47 @@
+---
+- name: Run Filebeat
+  hosts: ["digitalocean"]
+  gather_facts: true
+  become: true
+  vars:
+    stack_name: microservices-demo
+    stack_dir: /srv/microservices_demo
+    docker_group: docker
+    domain_name: cvbtechnology.com
+    certs_path: ./certs
+    
+  tasks:
+    #- name: Run Filebeat setup
+    #  docker_container:
+    #    name: filebeat-setup
+    #    image: docker.elastic.co/beats/filebeat:7.8.1
+    #    networks:
+    #      - name: "backend"
+    #    networks_cli_compatible: yes
+    #    command: setup -E setup.kibana.host=kibana:5601 -E output.elasticsearch.hosts=elasticsearch:9200
+    #    #cleaup: true
+
+    - name: Copy .elastic/filebeat.yml to remote host
+      template:
+        src: "../.elastic/filebeat.yml"
+        dest: "{{ stack_dir }}/.elastic/filebeat.yml"
+        owner: root
+        group: root
+
+    - name: Config Filebeat
+      docker_container:
+        name: filebeat-config
+        image: docker.elastic.co/beats/filebeat:7.8.1
+        user: root
+        env:
+          setup.kibana.host: "http://kibana:5601"
+          output.elasticsearch.hosts: "http://elasticsearch:9200"
+          strict.perms: "false"
+        networks:
+          - name: "backend"
+        networks_cli_compatible: yes
+        volumes:
+          - "{{ stack_dir }}/.elastic/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro"
+          - /var/lib/docker/containers:/var/lib/docker/containers:ro
+          - /var/run/docker.sock:/var/run/docker.sock:ro
+

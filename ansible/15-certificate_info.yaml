@@ -1,0 +1,23 @@
+---
+  - name: Get certificate information
+    hosts: ["digitalocean"]
+    gather_facts: true
+    become: true
+    vars:
+      stack_name: microservices-demo
+      stack_dir: /srv/microservices_demo
+      docker_group: docker
+      domain_name: cvbtechnology.com
+      certs_path: ./certs
+        
+    tasks:
+      - debug: var=stack_dir
+  
+      - name: Get certificate information
+        openssl_certificate_info:
+          path:  "{{ stack_dir }}/{{ certs_path }}/mongodb.pem"
+        register: result
+    
+      - name: Dump information
+        debug:
+          var: result

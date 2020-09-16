@@ -7,7 +7,7 @@
     stack_name: microservices-demo
     stack_dir: /srv/microservices_demo
     docker_group: docker
-    copy_to_remote_host: ["certs", ".apache", ".java-api", ".mongo-express", ".nodejs", ".traefik", "docker-compose.yml"]
+    copy_to_remote_host: ["certs", ".apache", ".elastic", ".java-api", ".mongo-express", ".nodejs"]
     docker_image_name:
       - { dir: ".apache", name: "apache-php-app" }
       - { dir: ".java-api", name: "java-api" }
@@ -32,3 +32,9 @@
         group: "{{ docker_group }}"
         #mode: '0644'
       with_items: "{{ copy_to_remote_host }}"
+
+    - name: Change filebeat.yml ownership
+      file:
+        path: "{{ stack_dir }}/.elastic/filebeat.yml"
+        owner: root
+        group: root

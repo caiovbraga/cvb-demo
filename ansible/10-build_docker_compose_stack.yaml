@@ -7,7 +7,8 @@
     stack_name: microservices-demo
     stack_dir: /srv/microservices_demo
     docker_group: docker
-    copy_to_remote_host: ["certs", ".apache", ".java-api", ".nodejs", ".traefik", "docker-compose.yml"]
+    domain_name: cvbtechnology.com
+    certs_path: ./certs
     docker_image_name:
       - { dir: ".apache", name: "apache-php-app" }
       - { dir: ".java-api", name: "java-api" }
@@ -16,13 +17,12 @@
   tasks:
     - debug: var=stack_dir
 
-    - name: Copy to remote host
-      copy:
-        src: "../docker-compose.yml"
-        dest: "{{ stack_dir }}"
+    - name: Copy docker-compose.yaml to remote host
+      template:
+        src: "./docker-compose.yaml.j2"
+        dest: "{{ stack_dir }}/docker-compose.yaml"
         owner: "{{ ansible_user }}"
         group: "{{ docker_group }}"
-        #mode: '0644'
 
     - name: Build images
       docker_image:

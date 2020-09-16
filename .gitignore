@@ -1,4 +1,8 @@
 /.java-api/target
+/.java-api/.settings
+/.java-api/.classpath
+/.java-api/.project
+/.java-api/.factorypath
 /.traefik
 /certs
 /ansible/inventory
