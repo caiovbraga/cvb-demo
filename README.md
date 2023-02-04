@@ -8,6 +8,6 @@ The purpose of this demo is to show a simple example of microservices architectu
 * Apache + PHP
 * Nodejs
 * Traefik
+* Ansible
 
-
-![diagram](https://cvbtechnology.com/storage/app/media/microservices_demo.png)
+![diagram](./diagram.png)
